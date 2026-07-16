@@ -141,6 +141,10 @@
       <h2>4 · Brand & Details</h2>
       <label>Brand colors (if you have them)</label>
       <input type="text" name="brand_colors" placeholder="e.g. orange & black, or 'match my logo'" />
+      <label>Your services & prices</label>
+      <textarea name="services_raw" rows="4" placeholder="One per line:
+Fade + Shape Up | $35 | Skin fade, lineup, hot towel
+Beard Trim | $20 | Shape and condition"></textarea>
       <label>Anything specific we should know?</label>
       <textarea name="notes" placeholder="Your hours, what you want the main button to say, examples of apps you like, anything at all — the more you tell us, the more it's built exactly how you run things."></textarea>
     </div>
@@ -151,7 +155,7 @@
         We connect <b>Bluevine</b> so payments land in your bank account automatically — <b>we never see your bank details.</b> You'll get an order confirmation, and we'll reach out within one business day to kick off your build. Questions any time: <b>rankbotaiapp@gmail.com</b>.
       </div>
     </div>
-
+    <input type="hidden" name="ready_config" id="readyConfig" />
     <button type="submit" class="submit" id="submitBtn">Submit Build Request</button>
     <div class="errbox" id="errBox">
       Something went wrong sending your request. Please email your details directly to
@@ -172,9 +176,48 @@
   const form = document.getElementById('buildForm');
   const btn = document.getElementById('submitBtn');
   const errBox = document.getElementById('errBox');
+  function buildConfig() {
+    const g = n => (form.querySelector(`[name="${n}"]`)?.value || "").trim();
+    const feats = [...form.querySelectorAll('[name="features"]:checked')].map(c => c.value);
+
+    const services = g("services_raw").split("\n").filter(Boolean).map(line => {
+      const [name, price, desc] = line.split("|").map(s => (s || "").trim());
+      return { name: name || "", price: price || "", desc: desc || "", icon: "circle" };
+    });
+
+    return `window.APP_CONFIG = {
+  business: {
+    name: ${JSON.stringify(g("business_name"))},
+    tagline: "",
+    phone: ${JSON.stringify(g("phone"))},
+    email: ${JSON.stringify(g("email"))},
+    logo: "logo.png"
+  },
+  branding: {
+    primary: "#B71C1C",
+    accent: "#F4A300",
+    theme: "aurora",
+    neon: { on: true, color: "match", width: 5 }
+  },
+  forms: { endpoint: "" },
+  orb: { on: true, label: "AXIOM" },
+  modules: {
+    hero: true,
+    services: ${services.length > 0},
+    gallery: ${feats.includes("Photo gallery")},
+    contact: true,
+    bookingForm: ${feats.includes("Contact / inquiry form") || feats.includes("Online booking")}
+  },
+  content: {
+    services: ${JSON.stringify(services, null, 6)},
+    gallery: []
+  }
+};`;
+  }
 
   form.addEventListener('submit', function(e){
     e.preventDefault();
+    document.getElementById('readyConfig').value = buildConfig();
     errBox.classList.remove('show');
     btn.disabled = true;
     btn.textContent = 'Sending…';
